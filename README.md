@@ -70,6 +70,25 @@ WAN1   198.51.100.23    static   True
 WAN2   203.0.113.9      dhcp     True
 ```
 
+### Monitoring
+
+`status_json.py` prints a summary as JSON, which is what you want if a
+monitoring system is going to read it:
+
+```sh
+python3 status_json.py --env-file /path/to/creds.env --host 192.168.0.1
+```
+
+```json
+{"ok": true, "model": "ER707-M2", "firmware": "1.4.5 ...", "uptime_s": 1430249,
+ "interfaces": [{"name": "WAN1", "address": "198.51.100.23", "up": true}, ...]}
+```
+
+On failure it prints `{"ok": false, "error": "..."}` and exits non-zero, so
+"gateway unreachable" stays distinguishable from "gateway unhappy". The
+`--env-file` option parses `KEY=VALUE` lines itself rather than sourcing them,
+so passwords with shell metacharacters cause no trouble.
+
 ## Known endpoints
 
 | path | form | returns |
