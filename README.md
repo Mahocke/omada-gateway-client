@@ -209,3 +209,23 @@ codes below are known.
 | 15123 | MAC already bound to another reserved entry |
 
 Verified against an ER707-M2 v1.30, firmware 1.3.2, in standalone mode.
+
+## Firmware differences
+
+The login, the endpoint names and the read/write shapes above are stable across
+firmware versions — but individual fields are not. Read defensively.
+
+Seen on an ER707-M2 v1.30 upgrading 1.3.2 → 1.4.5, `admin/dhcps?form=setting`:
+
+```jsonc
+// 1.3.2 Build 20251009
+{"ipaddr_start": "10.0.0.100", "ipaddr_end": "10.0.0.199", ...}
+
+// 1.4.5 Build 20260722 — a list now, presumably to allow several ranges
+{"ipRangePool": [{"start": "10.0.0.100", "end": "10.0.0.199"}], ...}
+```
+
+Nothing else changed: same login, same endpoints, same `set`/`add`/`delete`
+payloads, address reservations survived the upgrade untouched. Still, if you
+read a field by name, handle both shapes — or at least notice when it turns up
+missing rather than reporting an empty pool as fact.
