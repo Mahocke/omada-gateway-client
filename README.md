@@ -114,10 +114,13 @@ to every visitor of the login page.
 
 ## Support
 
-None promised — this scratches my own itch across three gateways. Issues and pull
-requests are welcome anyway, especially test reports from other models.
+There is none. I built this for my own gateways and I am not going to help you
+run it. Remarks, bug reports and pull requests are genuinely welcome — especially
+test reports from other models — I just make no promise to answer.
 
 ## License
 
-Apache 2.0. TP-Link and Omada are trademarks of TP-Link Systems Inc.; this
-project is not affiliated with them.
+MIT. Do whatever you want with it.
+
+TP-Link and Omada are trademarks of TP-Link Systems Inc.; this project is not
+affiliated with, endorsed by, or supported by them.
