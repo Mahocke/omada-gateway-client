@@ -115,6 +115,69 @@ class OmadaGateway:
             payload["params"] = params
         return self._post(path, form, payload)
 
+    def set(self, path, form, params):
+        """Write configuration back to the gateway.
+
+        Two things the web UI does that are easy to miss, and both are
+        mandatory:
+
+        1. The payload goes inside ``params``. Sending the fields at the top
+           level makes the gateway blow up with an HTTP 500 whose body reads
+           ``attempt to index field 'params'`` - which is, at least, an
+           unusually honest error message.
+        2. ``params`` must carry the *complete* record, not just what you want
+           to change. A partial update answers ``error_code 15102``.
+
+        So the pattern is read-modify-write. Drop read-only fields the gateway
+        reports but will not accept back (``maxleases`` on ``admin/dhcps``
+        being the one I tripped over):
+
+        >>> cfg = gw.get("admin/dhcps", "setting")["result"]
+        >>> cfg.pop("maxleases", None)
+        >>> cfg["leasetime"] = "240"
+        >>> gw.set("admin/dhcps", "setting", cfg)
+        """
+        return self._post(path, form, {"method": "set", "params": params})
+
+    def add(self, path, form, entry, index=None):
+        """Append an entry to a list-style endpoint (address reservations,
+        firewall rules, and friends).
+
+        This one is not guessable, so here it is in full. The fields do *not*
+        go into ``params`` directly - they go into a nested ``new`` object, and
+        ``old`` and ``id`` both carry the literal string ``"add"``:
+
+            {"method": "add", "params": {
+                "index": <position>, "old": "add", "id": "add",
+                "new": { ...the actual fields... }}}
+
+        Anything else answers ``error_code 15101`` ("Incorrect parameters"),
+        which is where I spent six increasingly creative attempts. ``index`` is
+        the position to insert at; passing the current entry count appends.
+
+        >>> gw.add("admin/dhcps", "reservation", {
+        ...     "mac": "aa-bb-cc-11-22-33", "ip": "192.168.0.32",
+        ...     "note": "desk phone", "bind": "1", "ip_bind": "on",
+        ...     "dhcp_option_bind": "off", "interface": "LAN1",
+        ...     "enable": "on"})
+        """
+        if index is None:
+            current = self.get(path, form).get("result") or []
+            index = len(current)
+        return self._post(path, form, {"method": "add", "params": {
+            "index": index, "old": "add", "id": "add", "new": entry}})
+
+    def delete(self, path, form, key, index, extra_key):
+        """Remove an entry from a list-style endpoint.
+
+        ``key`` is the entry's ``id``, ``index`` its position in the list, and
+        ``extra_key`` the interface it belongs to (e.g. ``"LAN1"``).
+
+        >>> gw.delete("admin/dhcps", "reservation", "3", "1", "LAN1")
+        """
+        return self._post(path, form, {"method": "delete", "params": {
+            "key": str(key), "index": str(index), "extraKey": extra_key}})
+
     def logout(self):
         try:
             self._post("login", "logout", {"method": "logout"})

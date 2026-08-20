@@ -143,3 +143,69 @@ MIT. Do whatever you want with it.
 
 TP-Link and Omada are trademarks of TP-Link Systems Inc.; this project is not
 affiliated with, endorsed by, or supported by them.
+
+## Writing
+
+Reading was the easy half. Writing has three shapes, and the gateway tells you
+almost nothing when you get one wrong — every mistake answers the same
+`error_code 15101`, "Incorrect parameters".
+
+**Single records** (`admin/dhcps?form=setting`, and most `?form=…` settings
+pages) take the complete record inside `params`. Read-modify-write:
+
+```python
+cfg = gw.get("admin/dhcps", "setting")["result"]
+cfg.pop("maxleases", None)          # reported, but rejected on the way back
+cfg["leasetime"] = "240"
+gw.set("admin/dhcps", "setting", cfg)
+```
+
+A partial update answers `error_code 15102`. Sending the fields at the top level
+instead of inside `params` gets you an HTTP 500 whose body reads
+`attempt to index field 'params'` — an unusually honest error message.
+
+**List entries** (address reservations, firewall rules) do *not* follow that
+pattern. The fields go into a nested `new` object, and `old` and `id` both carry
+the literal string `"add"`:
+
+```python
+gw.add("admin/dhcps", "reservation", {
+    "mac": "aa-bb-cc-11-22-33", "ip": "192.168.0.32", "note": "desk phone",
+    "bind": "1", "ip_bind": "on", "dhcp_option_bind": "off",
+    "interface": "LAN1", "enable": "on"})
+
+gw.delete("admin/dhcps", "reservation", key="3", index="1", extra_key="LAN1")
+```
+
+I did not derive this. I read it off a request the web UI made, copied out of
+Chrome's network panel as cURL. Six attempts at guessing it produced six
+identical `15101`s.
+
+## Finding endpoints
+
+`endpoints.txt` lists 524 `path?form=name` pairs. They are not documented
+anywhere — they come out of the UI's own bundles, which map every endpoint to a
+JSON fixture. Fetch them *with a valid session cookie*; anonymously they come
+back empty:
+
+```python
+gw.login()
+req = urllib.request.Request(gw.base + "/webpages/js/chunk-common.<hash>.js")
+req.add_header("Cookie", gw._cookie)
+```
+
+The same bundles carry the error-code table in plain text, which is how the
+codes below are known.
+
+| Code | Meaning |
+|------|---------|
+| 700 | wrong credentials — **increments a lockout counter** |
+| 1014 | illegal operation (wrong `method` for this endpoint) |
+| 15101 | incorrect parameters |
+| 15102 | partial update — send the complete record |
+| 15104 | invalid MAC or IP |
+| 15105 | conflicts with an existing ARP entry |
+| 15111 | IP already in the static reservation list |
+| 15123 | MAC already bound to another reserved entry |
+
+Verified against an ER707-M2 v1.30, firmware 1.3.2, in standalone mode.
