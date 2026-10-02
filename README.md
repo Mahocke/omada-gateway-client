@@ -108,10 +108,15 @@ is the fastest way to find endpoints this table doesn't cover yet.
 
 ## Scope
 
-Read-only for now. Write operations use the same transport with `"method": "set"`
-or `"add"`, but they are not implemented here — partly because they need
-per-endpoint work, partly because getting a WAN operation wrong on a remote
-gateway locks you out of the very interface you need to fix it.
+Reading and the three request shapes used by the web UI are implemented:
+`get`, read-modify-`set`, and list-style `add`/`delete`. Writes are deliberately
+low-level: the gateway validates each endpoint differently, so the client does
+not pretend that arbitrary fields are safe. Inspect the current record first,
+keep a recovery path to the gateway, and test writes on a non-critical setting.
+
+There is no controller API abstraction, schema discovery, or promise that an
+endpoint stays compatible across firmware versions. In particular, avoid
+changing WAN or remote-access settings unless you can reach the device locally.
 
 ## Tested on
 
